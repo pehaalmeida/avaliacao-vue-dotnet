@@ -56,8 +56,6 @@ namespace ProdutoApi.Controllers
                 return await query.ToListAsync();
         }
 
-
-
         // GET: api/produtos/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Produto>> GetProduto(int id)
