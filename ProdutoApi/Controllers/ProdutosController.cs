@@ -126,7 +126,7 @@ namespace ProdutoApi.Controllers
 
             // Gera URL pública para a imagem
             var scheme = Request?.Scheme ?? "http";
-            var host = Request?.Host.ToString() ?? "localhost:5090";
+            var host = Request?.Host.ToString() ?? "localhost:5091";
             var urlImagem = $"{scheme}://{host}/imagens/{nomeArquivo}";
 
             // Cria objeto para enviar à Fake Store
@@ -203,7 +203,7 @@ namespace ProdutoApi.Controllers
 
                 // Gera nova URL da imagem
                 var scheme = Request?.Scheme ?? "http";
-                var host = Request?.Host.ToString() ?? "localhost:5090";
+                var host = Request?.Host.ToString() ?? "localhost:5091";
                 var urlImagem = $"{scheme}://{host}/imagens/{nomeArquivo}";
 
                 // Atualiza na Fake Store

@@ -3,11 +3,22 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Adiciona os serviços básicos da API (Controllers, Swagger etc)
+// Habilita CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()   // libera para o front Vue
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+// Adiciona os serviï¿½os bï¿½sicos da API (Controllers, Swagger etc)
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddHttpClient(); // Adiciona suporte à injeção de HttpClient
+builder.Services.AddHttpClient(); // Adiciona suporte ï¿½ injeï¿½ï¿½o de HttpClient
 
 
 // Registra o AppDbContext e conecta com o SQL Server usando a connection string
@@ -21,7 +32,8 @@ app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseStaticFiles();
+app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run(); // Inicia a aplicação
+app.Run(); // Inicia a aplicaï¿½ï¿½o
