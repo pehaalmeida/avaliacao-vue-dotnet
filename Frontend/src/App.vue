@@ -1,17 +1,25 @@
 <template>
-  <div class="p-6 max-w-5xl mx-auto">
-    <h1 class="text-2xl font-bold mb-6">🛒 Gerenciador de Produtos</h1>
+  <div class="min-h-screen bg-light text-gray-900">
+    <div class="max-w-5xl mx-auto p-6">
+      <h1 class="text-3xl font-bold text-primary mb-6 flex items-center gap-2">
+        🛒 Gerenciador de Produtos
+      </h1>
 
-    <!-- Componente de formulário -->
-    <ProdutoForm @produto-criado="carregarProdutos" />
+      <!-- Formulário como modal -->
+      <ProdutoForm
+        :produto-edicao="produtoSelecionado"
+        @produto-criado="carregarProdutos"
+      />
 
-    <hr class="my-6" />
+      <hr class="my-8 border-gray-300" />
 
-    <!-- Componente de listagem -->
-    <ProdutoLista
-      :produtos="produtos"
-      @excluir="excluirProduto"
-    />
+      <!-- Lista com edição -->
+      <ProdutoLista
+        :produtos="produtos"
+        @excluir="excluirProduto"
+        @editar="editarProduto"
+      />
+    </div>
   </div>
 </template>
 
@@ -23,7 +31,8 @@ export default {
   components: { ProdutoForm, ProdutoLista },
   data() {
     return {
-      produtos: []
+      produtos: [],
+      produtoSelecionado: null
     };
   },
   methods: {
@@ -34,6 +43,9 @@ export default {
     async excluirProduto(id) {
       await fetch(`http://localhost:5091/api/produtos/${id}`, { method: 'DELETE' });
       this.carregarProdutos();
+    },
+    editarProduto(produto) {
+      this.produtoSelecionado = { ...produto };
     }
   },
   mounted() {
@@ -41,3 +53,10 @@ export default {
   }
 };
 </script>
+
+<style>
+body {
+  background: #f3f4f6;
+  font-family: 'Segoe UI', sans-serif;
+}
+</style>
