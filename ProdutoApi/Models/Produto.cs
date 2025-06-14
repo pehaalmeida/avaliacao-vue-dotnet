@@ -7,6 +7,7 @@ namespace ProdutoApi.Models
         public string? Nome { get; set; } // Nome do produto
         public decimal Preco { get; set; } // Preço do produto
         public string? CodigoBarras { get; set; } // Código de barras
-        public byte[]? Imagem { get; set; } // Imagem em formato de bytes
+        public string? ImagemBase64 { get; set; }
+        public int? IdFakeStore { get; set; }
     }
 }
