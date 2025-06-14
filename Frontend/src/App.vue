@@ -1,10 +1,14 @@
 <template>
-  <div class="min-h-screen bg-light text-gray-900">
-    <div class="max-w-5xl mx-auto p-6">
-      <h1 class="text-3xl font-bold text-primary mb-6 flex items-center gap-2">
-        🛒 Gerenciador de Produtos
-      </h1>
+  <div class="min-h-screen bg-gray-100 text-gray-900">
+    <header class="bg-white shadow">
+      <div class="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-indigo-600 flex items-center gap-2">
+          🛒 Gerenciador de Produtos
+        </h1>
+      </div>
+    </header>
 
+    <main class="max-w-6xl mx-auto px-4 py-6">
       <!-- Formulário como modal -->
       <ProdutoForm
         :produto-edicao="produtoSelecionado"
@@ -19,7 +23,7 @@
         @excluir="excluirProduto"
         @editar="editarProduto"
       />
-    </div>
+    </main>
   </div>
 </template>
 

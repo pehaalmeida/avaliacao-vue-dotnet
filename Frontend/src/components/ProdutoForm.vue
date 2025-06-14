@@ -1,35 +1,68 @@
 <template>
   <div>
-    <!-- Botão abrir modal -->
-    <button @click="abrirModal" class="bg-primary text-white px-4 py-2 rounded hover:bg-indigo-700 mb-4">
+    <!-- Toast fixo no canto superior direito -->
+    <div
+      v-if="mensagemSucesso"
+      class="fixed top-6 right-6 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-fade"
+    >
+      <span>{{ mensagemSucesso }}</span>
+      <button @click="mensagemSucesso = ''" class="text-white hover:text-gray-200 font-bold text-lg leading-none">
+        ✖
+      </button>
+    </div>
+
+    <!-- Botão para abrir o modal de novo produto -->
+    <button @click="abrirModal" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded shadow">
       Novo Produto
     </button>
 
-    <!-- Modal -->
-    <div v-if="aberto" class="fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center">
-      <div class="bg-white rounded shadow p-6 w-full max-w-md relative">
-        <button @click="fecharModal" class="absolute top-2 right-2 text-gray-600 hover:text-black">✖</button>
-        <h2 class="text-xl font-semibold mb-4">{{ modoEdicao ? 'Editar' : 'Novo' }} Produto</h2>
+    <!-- Modal para criação/edição de produto -->
+    <div v-if="aberto" class="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center p-4">
+      <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg relative">
+        <!-- Botão fechar -->
+        <button @click="fecharModal" class="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-xl">
+          ✖
+        </button>
 
-        <form @submit.prevent="salvarProduto" class="grid gap-4">
-          <div class="grid gap-1">
-            <label>Nome</label>
-            <input v-model="form.nome" class="input" required />
+        <!-- Título -->
+        <h2 class="text-2xl font-bold mb-6 text-center text-orange-500">
+          {{ modoEdicao ? 'Editar Produto' : 'Novo Produto' }}
+        </h2>
+
+        <!-- Formulário -->
+        <form @submit.prevent="salvarProduto" class="grid gap-5">
+          <div>
+            <label class="block text-sm font-medium mb-1">Nome</label>
+            <input v-model="form.nome" class="input" :class="{ 'border-red-500': erros.nome }" />
+            <p v-if="erros.nome" class="text-red-500 text-sm mt-1">{{ erros.nome }}</p>
           </div>
-          <div class="grid gap-1">
-            <label>Preço</label>
-            <input v-model.number="form.preco" type="number" class="input" required />
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Preço</label>
+            <input
+              class="input"
+              :class="{ 'border-red-500': erros.preco }"
+              :value="precoBruto"
+              @input="handlePrecoInput"
+              @blur="formatarPreco"
+              @focus="removerFormatacao"
+            />
+            <p v-if="erros.preco" class="text-red-500 text-sm mt-1">{{ erros.preco }}</p>
           </div>
-          <div class="grid gap-1">
-            <label>Código de Barras</label>
-            <input v-model="form.codigoBarras" class="input" required />
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Código de Barras</label>
+            <input v-model="form.codigoBarras" class="input" :class="{ 'border-red-500': erros.codigoBarras }" />
+            <p v-if="erros.codigoBarras" class="text-red-500 text-sm mt-1">{{ erros.codigoBarras }}</p>
           </div>
-          <div class="grid gap-1">
-            <label>Imagem</label>
+
+          <div>
+            <label class="block text-sm font-medium mb-1">Imagem</label>
             <input type="file" @change="carregarImagem" class="input" accept="image/*" />
+            <p v-if="erros.imagem" class="text-red-500 text-sm mt-1">{{ erros.imagem }}</p>
           </div>
 
-          <button type="submit" class="bg-primary text-white px-4 py-2 rounded hover:bg-indigo-700">
+          <button type="submit" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg shadow">
             {{ modoEdicao ? 'Atualizar' : 'Salvar' }} Produto
           </button>
         </form>
@@ -47,14 +80,27 @@ export default {
     return {
       aberto: false,
       modoEdicao: false,
+      precoBruto: '',
+      mensagemSucesso: '',
       form: {
         nome: '',
         preco: 0,
         codigoBarras: '',
         imagemBase64: '',
         id: null
+      },
+      erros: {
+        nome: '',
+        preco: '',
+        codigoBarras: '',
+        imagem: ''
       }
     };
+  },
+  computed: {
+    precoDisplay() {
+      return this.precoBruto;
+    }
   },
   watch: {
     produtoEdicao: {
@@ -62,6 +108,7 @@ export default {
       handler(produto) {
         if (produto) {
           this.form = { ...produto };
+          this.precoBruto = produto.preco.toString().replace('.', ',');
           this.modoEdicao = true;
           this.aberto = true;
         }
@@ -71,33 +118,155 @@ export default {
   methods: {
     abrirModal() {
       this.form = { nome: '', preco: 0, codigoBarras: '', imagemBase64: '', id: null };
+      this.precoBruto = '';
       this.modoEdicao = false;
       this.aberto = true;
+      this.limparErros();
     },
     fecharModal() {
       this.aberto = false;
     },
-    carregarImagem(event) {
-      const file = event.target.files[0];
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.form.imagemBase64 = reader.result.split(',')[1];
+    limparErros() {
+      this.erros = {
+        nome: '',
+        preco: '',
+        codigoBarras: '',
+        imagem: ''
       };
-      if (file) reader.readAsDataURL(file);
+    },
+    handlePrecoInput(event) {
+      let valor = event.target.value;
+
+      // Remove tudo que não é número ou vírgula
+      valor = valor.replace(/[^\d,]/g, '');
+
+      // Garante no máximo uma vírgula
+      const partes = valor.split(',');
+      if (partes.length > 2) {
+        valor = partes[0] + ',' + partes[1];
+      }
+
+      this.precoBruto = valor;
+    },
+
+    formatarPreco() {
+      if (!this.precoBruto) {
+        this.form.preco = 0;
+        this.precoBruto = '';
+        return;
+      }
+
+      const limpo = this.precoBruto.replace(/[^\d,]/g, '').replace(',', '.');
+      const valor = parseFloat(limpo);
+
+      if (!isNaN(valor) && valor > 0) {
+        this.form.preco = valor;
+        this.precoBruto = valor.toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        });
+      } else {
+        this.form.preco = 0;
+        this.precoBruto = '';
+      }
+    },
+    removerFormatacao() {
+      if (this.form.preco) {
+        this.precoBruto = String(this.form.preco).replace('.', ',');
+      }
+    },
+    async carregarImagem(event) {
+      const file = event.target.files[0];
+      this.erros.imagem = '';
+
+      if (!file) return;
+
+      const tiposAceitos = ['image/jpeg', 'image/png', 'image/jpg'];
+      if (!tiposAceitos.includes(file.type)) {
+        this.erros.imagem = 'Apenas imagens JPEG ou PNG são permitidas.';
+        return;
+      }
+
+      const imagemCompactada = await this.comprimirImagem(file, 800, 0.7);
+      this.form.imagemBase64 = imagemCompactada;
+    },
+    async comprimirImagem(file, maxLargura, qualidade = 0.7) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const ratio = img.width / img.height;
+
+            let largura = img.width;
+            let altura = img.height;
+
+            if (largura > maxLargura) {
+              largura = maxLargura;
+              altura = Math.round(largura / ratio);
+            }
+
+            canvas.width = largura;
+            canvas.height = altura;
+
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, largura, altura);
+
+            const base64 = canvas.toDataURL('image/jpeg', qualidade);
+            resolve(base64.split(',')[1]);
+          };
+
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
     },
     async salvarProduto() {
+      this.limparErros();
+
+      if (!this.form.nome.trim()) this.erros.nome = 'O nome é obrigatório.';
+      if (!this.form.preco || this.form.preco <= 0) this.erros.preco = 'Informe um preço válido.';
+      if (!this.form.codigoBarras.trim()) this.erros.codigoBarras = 'O código de barras é obrigatório.';
+      if (!this.modoEdicao && !this.form.imagemBase64) this.erros.imagem = 'Selecione uma imagem.';
+
+      if (Object.values(this.erros).some(msg => msg)) return;
+
       const url = this.modoEdicao
         ? `http://localhost:5091/api/produtos/${this.form.id}`
         : 'http://localhost:5091/api/produtos';
       const method = this.modoEdicao ? 'PUT' : 'POST';
 
-      await fetch(url, {
+      const payload = { ...this.form };
+      if (!this.modoEdicao) delete payload.id;
+
+      const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(this.form)
+        body: JSON.stringify(payload)
       });
 
+      if (!response.ok) {
+        const error = await response.text();
+        alert("Erro ao salvar produto: " + error);
+        return;
+      }
+
       this.fecharModal();
+      this.mensagemSucesso = this.modoEdicao
+        ? 'Produto atualizado com sucesso!'
+        : 'Produto cadastrado com sucesso!';
+
+      setTimeout(() => {
+        this.mensagemSucesso = '';
+      }, 5000); // 5 segundos
+
       this.$emit('produto-criado');
     }
   }
@@ -106,6 +275,21 @@ export default {
 
 <style scoped>
 .input {
-  @apply border p-2 rounded w-full;
+  @apply border border-gray-300 p-2 rounded w-full focus:outline-none focus:ring-2 focus:ring-indigo-400;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade {
+  animation: fade 0.3s ease-out;
 }
 </style>
