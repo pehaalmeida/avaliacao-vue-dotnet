@@ -3,7 +3,7 @@
     <header class="bg-white shadow">
       <div class="max-w-6xl mx-auto px-4 py-6 flex items-center justify-between">
         <h1 class="text-2xl md:text-3xl font-bold text-indigo-600 flex items-center gap-2">
-          🛒 Gerenciador de Produtos
+          Gerenciador de Produtos
         </h1>
       </div>
     </header>
@@ -31,6 +31,7 @@
 import ProdutoForm from './components/ProdutoForm.vue'
 import ProdutoLista from './components/ProdutoLista.vue'
 
+// Importando os componentes ProdutoForm e ProdutoLista
 export default {
   components: { ProdutoForm, ProdutoLista },
   data() {

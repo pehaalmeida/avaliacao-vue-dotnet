@@ -1,6 +1,6 @@
 <template>
   <div>
-    <!-- Toast fixo no canto superior direito -->
+    <!-- AVISO fixo no canto superior direito -->
     <div
       v-if="mensagemSucesso"
       class="fixed top-6 right-6 bg-green-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-fade"
@@ -16,10 +16,10 @@
       Novo Produto
     </button>
 
-    <!-- Modal para criação/edição de produto -->
+    <!-- Modal -->
     <div v-if="aberto" class="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center p-4">
       <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg relative">
-        <!-- Botão fechar -->
+        <!-- Fechar -->
         <button @click="fecharModal" class="absolute top-3 right-4 text-gray-500 hover:text-gray-800 text-xl">
           ✖
         </button>
@@ -40,12 +40,11 @@
           <div>
             <label class="block text-sm font-medium mb-1">Preço</label>
             <input
+              v-model="form.preco"
+              @keypress="permitirSomenteNumerosVirgulaPonto"
               class="input"
+              placeholder="Ex: 19,99"
               :class="{ 'border-red-500': erros.preco }"
-              :value="precoBruto"
-              @input="handlePrecoInput"
-              @blur="formatarPreco"
-              @focus="removerFormatacao"
             />
             <p v-if="erros.preco" class="text-red-500 text-sm mt-1">{{ erros.preco }}</p>
           </div>
@@ -74,41 +73,38 @@
 <script>
 export default {
   props: {
+    // Produto recebido para edição
     produtoEdicao: Object
   },
   data() {
+    // Estado do modal e formulário
     return {
-      aberto: false,
-      modoEdicao: false,
-      precoBruto: '',
-      mensagemSucesso: '',
+      aberto: false,             
+      modoEdicao: false,         
+      mensagemSucesso: '',       
       form: {
-        nome: '',
-        preco: 0,
-        codigoBarras: '',
-        imagemBase64: '',
-        id: null
+        nome: '',                
+        preco: '',               
+        codigoBarras: '',        
+        imagemBase64: '',        
+        id: null                 
       },
       erros: {
-        nome: '',
-        preco: '',
-        codigoBarras: '',
-        imagem: ''
+        nome: '',                
+        preco: '',               
+        codigoBarras: '',        
+        imagem: ''              
       }
     };
   },
-  computed: {
-    precoDisplay() {
-      return this.precoBruto;
-    }
-  },
   watch: {
+    // Detecta se foi passado um produto para edição
     produtoEdicao: {
       immediate: true,
       handler(produto) {
         if (produto) {
-          this.form = { ...produto };
-          this.precoBruto = produto.preco.toString().replace('.', ',');
+          this.form = { ...produto }; // Preenche o formulário
+          this.form.preco = produto.preco.toString().replace('.', ','); // Formata o preço
           this.modoEdicao = true;
           this.aberto = true;
         }
@@ -116,16 +112,26 @@ export default {
     }
   },
   methods: {
+    // Abre o modal e reseta o formulário
     abrirModal() {
-      this.form = { nome: '', preco: 0, codigoBarras: '', imagemBase64: '', id: null };
-      this.precoBruto = '';
+      this.form = {
+        nome: '',
+        preco: '',
+        codigoBarras: '',
+        imagemBase64: '',
+        id: null
+      };
       this.modoEdicao = false;
       this.aberto = true;
       this.limparErros();
     },
+
+    // Fecha o modal
     fecharModal() {
       this.aberto = false;
     },
+
+    // Limpa mensagens de erro do formulário
     limparErros() {
       this.erros = {
         nome: '',
@@ -134,51 +140,20 @@ export default {
         imagem: ''
       };
     },
-    handlePrecoInput(event) {
-      let valor = event.target.value;
 
-      // Remove tudo que não é número ou vírgula
-      valor = valor.replace(/[^\d,]/g, '');
-
-      // Garante no máximo uma vírgula
-      const partes = valor.split(',');
-      if (partes.length > 2) {
-        valor = partes[0] + ',' + partes[1];
-      }
-
-      this.precoBruto = valor;
-    },
-
-    formatarPreco() {
-      if (!this.precoBruto) {
-        this.form.preco = 0;
-        this.precoBruto = '';
-        return;
-      }
-
-      const limpo = this.precoBruto.replace(/[^\d,]/g, '').replace(',', '.');
-      const valor = parseFloat(limpo);
-
-      if (!isNaN(valor) && valor > 0) {
-        this.form.preco = valor;
-        this.precoBruto = valor.toLocaleString('pt-BR', {
-          style: 'currency',
-          currency: 'BRL'
-        });
-      } else {
-        this.form.preco = 0;
-        this.precoBruto = '';
+    // Bloqueia caracteres inválidos no campo de preço (permite apenas números, vírgula e ponto)
+    permitirSomenteNumerosVirgulaPonto(event) {
+      const char = String.fromCharCode(event.keyCode || event.which);
+      const regex = /[0-9.,]/; // Aceita apenas números, ponto e vírgula
+      if (!regex.test(char)) {
+        event.preventDefault(); // Bloqueia digitação
       }
     },
-    removerFormatacao() {
-      if (this.form.preco) {
-        this.precoBruto = String(this.form.preco).replace('.', ',');
-      }
-    },
+
+    // Quando o usuário escolhe uma imagem, ela é compactada e convertida em base64
     async carregarImagem(event) {
       const file = event.target.files[0];
       this.erros.imagem = '';
-
       if (!file) return;
 
       const tiposAceitos = ['image/jpeg', 'image/png', 'image/jpg'];
@@ -187,9 +162,12 @@ export default {
         return;
       }
 
+      // Chama método que comprime e converte a imagem para base64
       const imagemCompactada = await this.comprimirImagem(file, 800, 0.7);
       this.form.imagemBase64 = imagemCompactada;
     },
+
+    // Compacta e converte imagem em base64 com largura máxima e qualidade ajustável
     async comprimirImagem(file, maxLargura, qualidade = 0.7) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -203,11 +181,13 @@ export default {
             let largura = img.width;
             let altura = img.height;
 
+            // Redimensiona a imagem se for maior que o limite
             if (largura > maxLargura) {
               largura = maxLargura;
               altura = Math.round(largura / ratio);
             }
 
+            // Desenha a imagem no canvas
             canvas.width = largura;
             canvas.height = altura;
 
@@ -216,6 +196,7 @@ export default {
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0, largura, altura);
 
+            // Converte imagem para base64 e remove o prefixo
             const base64 = canvas.toDataURL('image/jpeg', qualidade);
             resolve(base64.split(',')[1]);
           };
@@ -228,24 +209,33 @@ export default {
         reader.readAsDataURL(file);
       });
     },
+
+    // Valida os campos e envia o produto para a API (criação ou atualização)
     async salvarProduto() {
       this.limparErros();
 
       if (!this.form.nome.trim()) this.erros.nome = 'O nome é obrigatório.';
-      if (!this.form.preco || this.form.preco <= 0) this.erros.preco = 'Informe um preço válido.';
+      if (!this.form.preco || parseFloat(this.form.preco.replace(',', '.')) <= 0)
+        this.erros.preco = 'Informe um preço válido.';
       if (!this.form.codigoBarras.trim()) this.erros.codigoBarras = 'O código de barras é obrigatório.';
       if (!this.modoEdicao && !this.form.imagemBase64) this.erros.imagem = 'Selecione uma imagem.';
 
+      // Se houver erros, não envia
       if (Object.values(this.erros).some(msg => msg)) return;
 
+      // Monta URL e método da requisição
       const url = this.modoEdicao
         ? `http://localhost:5091/api/produtos/${this.form.id}`
         : 'http://localhost:5091/api/produtos';
       const method = this.modoEdicao ? 'PUT' : 'POST';
 
+      // Prepara o payload
       const payload = { ...this.form };
+      payload.preco = parseFloat(this.form.preco.replace(',', '.')); // Converte preço para float
+
       if (!this.modoEdicao) delete payload.id;
 
+      // Envia para API
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -258,15 +248,18 @@ export default {
         return;
       }
 
+      // Fecha modal e mostra AVISO de sucesso
       this.fecharModal();
       this.mensagemSucesso = this.modoEdicao
         ? 'Produto atualizado com sucesso!'
         : 'Produto cadastrado com sucesso!';
 
+      // Esconde AVISO após 5 segundos
       setTimeout(() => {
         this.mensagemSucesso = '';
-      }, 5000); // 5 segundos
+      }, 5000);
 
+      // Notifica componente pai para recarregar lista
       this.$emit('produto-criado');
     }
   }
