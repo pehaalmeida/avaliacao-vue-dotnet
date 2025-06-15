@@ -1,5 +1,6 @@
 using ProdutoApi.Data; // Importa o contexto e a biblioteca do EF Core
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,11 +15,22 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Adiciona os servi�os b�sicos da API (Controllers, Swagger etc)
+// Configura o Serilog para registrar logs em arquivos pasta "Logs"
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.File(
+        "Logs/log-.txt",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+    )
+    .CreateLogger();
+
+builder.Host.UseSerilog(); 
+
+// Configura o JSON para usar PascalCase
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddHttpClient(); // Adiciona suporte � inje��o de HttpClient
+builder.Services.AddHttpClient(); // Adiciona o HttpClient para chamadas HTTP
 
 
 // Registra o AppDbContext e conecta com o SQL Server usando a connection string
@@ -36,4 +48,4 @@ app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run(); // Inicia a aplica��o
+app.Run(); // Inicia a aplicação

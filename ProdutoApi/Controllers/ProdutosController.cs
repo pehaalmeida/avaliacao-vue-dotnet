@@ -11,87 +11,92 @@ namespace ProdutoApi.Controllers
     public class ProdutosController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly ILogger<ProdutosController> _logger;
 
-        public ProdutosController(AppDbContext context)
+        public ProdutosController(AppDbContext context, ILogger<ProdutosController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
-        // GET: api/produtos
+        // GET: Retorna uma lista paginada de produtos, com filtros opcionais por nome, código de barras e ordenacao por preco 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Produto>>> GetProdutos(
-        [FromQuery] string? nome,
-        [FromQuery] string? codigoBarras,
-        [FromQuery] string? ordenarPor,
-        [FromQuery] string? ordem,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+            [FromQuery] string? nome,
+            [FromQuery] string? codigoBarras,
+            [FromQuery] string? ordenarPor,
+            [FromQuery] string? ordem,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10)
         {
-                var query = _context.Produtos.AsQueryable();
+            _logger.LogInformation("[AVISO] Iniciando listagem de produtos");
 
-                // Filtro por nome (ignora maiúsculas/minúsculas)
-                if (!string.IsNullOrWhiteSpace(nome))
-                {
-                    query = query.Where(p =>
-                        !string.IsNullOrWhiteSpace(p.Nome) &&
-                        p.Nome.ToLower().Contains(nome!.ToLower()));
-                }
+            var query = _context.Produtos.AsQueryable();
 
-                // Filtro por código de barras
-                if (!string.IsNullOrWhiteSpace(codigoBarras))
-                    query = query.Where(p => p.CodigoBarras == codigoBarras);
+            if (!string.IsNullOrWhiteSpace(nome))
+            {
+                query = query.Where(p =>
+                    !string.IsNullOrWhiteSpace(p.Nome) &&
+                    p.Nome.ToLower().Contains(nome.ToLower()));
+            }
 
-                // Ordenação por preço
-                if (!string.IsNullOrWhiteSpace(ordenarPor) && ordenarPor.ToLower() == "preco")
-                {
-                    query = (!string.IsNullOrWhiteSpace(ordem) && ordem.ToLower() == "desc")
-                      ? query.OrderByDescending(p => p.Preco)
-                      : query.OrderBy(p => p.Preco);
-                }
+            if (!string.IsNullOrWhiteSpace(codigoBarras))
+            {
+                query = query.Where(p => p.CodigoBarras == codigoBarras);
+            }
 
-            // Paginação
+            if (!string.IsNullOrWhiteSpace(ordenarPor) && ordenarPor.ToLower() == "preco")
+            {
+                query = ordem?.ToLower() == "desc"
+                    ? query.OrderByDescending(p => p.Preco)
+                    : query.OrderBy(p => p.Preco);
+            }
+
             query = query
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize);
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize);
 
-                return await query.ToListAsync();
+            return await query.ToListAsync();
         }
 
-        // GET: api/produtos/5
+        // GET: Retorna um produto especifico pelo ID
         [HttpGet("{id}")]
         public async Task<ActionResult<Produto>> GetProduto(int id)
         {
+            _logger.LogInformation("[AVISO] Buscando produto com ID: {Id}", id);
+
             var produto = await _context.Produtos.FindAsync(id);
 
             if (produto == null)
             {
+                _logger.LogWarning("[AVISO] Produto ID {Id} não encontrado para exibição", id);
                 return NotFound();
             }
 
             return produto;
         }
 
-        // POST: api/produtos
+        // POST: Cria um novo produto, valida os campos obrigatórios e salva a imagem no disco
         [HttpPost]
         public async Task<ActionResult<Produto>> PostProduto(
-        Produto produto,
-        [FromServices] IWebHostEnvironment env,
-        [FromServices] IHttpClientFactory httpClientFactory)
+            Produto produto,
+            [FromServices] IWebHostEnvironment env,
+            [FromServices] IHttpClientFactory httpClientFactory)
         {
-            // Validação dos dados recebidos
+            _logger.LogInformation("[AVISO] Iniciando criação de produto: {@Produto}", produto);
+
             if (string.IsNullOrWhiteSpace(produto.Nome) ||
                 string.IsNullOrWhiteSpace(produto.CodigoBarras) ||
                 produto.Preco <= 0 ||
                 string.IsNullOrWhiteSpace(produto.ImagemBase64))
             {
+                _logger.LogWarning("[AVISO] Dados inválidos recebidos ao tentar criar produto");
                 return BadRequest("Todos os campos são obrigatórios, incluindo a imagem em base64.");
             }
 
-            // Garante que a pasta de imagens existe
             var pastaImagem = Path.Combine(env.WebRootPath, "imagens");
             Directory.CreateDirectory(pastaImagem);
 
-            // Gera nome único para salvar o arquivo
             var nomeArquivo = $"{Guid.NewGuid()}.png";
             var caminhoImagem = Path.Combine(pastaImagem, nomeArquivo);
 
@@ -103,33 +108,22 @@ namespace ProdutoApi.Controllers
                     .Replace("\r", "")
                     .Replace(" ", "");
 
-                Console.WriteLine("Base64 recebida:");
-                Console.WriteLine(imagemBase64Limpa);
-
                 var imagemBytes = Convert.FromBase64String(imagemBase64Limpa);
-
-                Console.WriteLine("Tamanho em bytes: " + imagemBytes.Length);
-
                 await System.IO.File.WriteAllBytesAsync(caminhoImagem, imagemBytes);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("ERRO AO CONVERTER BASE64:");
-                Console.WriteLine(ex.Message);
+                _logger.LogError(ex, "Erro ao converter a imagem base64");
                 return BadRequest("Imagem enviada não está em formato base64 válido.");
             }
 
-
-            // Salva o produto no banco (com base64 incluído)
             _context.Produtos.Add(produto);
             await _context.SaveChangesAsync();
 
-            // Gera URL pública para a imagem
             var scheme = Request?.Scheme ?? "http";
             var host = Request?.Host.ToString() ?? "localhost:5091";
             var urlImagem = $"{scheme}://{host}/imagens/{nomeArquivo}";
 
-            // Cria objeto para enviar à Fake Store
             var fakeProduct = new FakeStoreProduto
             {
                 title = produto.Nome!,
@@ -138,57 +132,47 @@ namespace ProdutoApi.Controllers
                 category = "geral"
             };
 
-            // Envia o produto para a Fake Store
             var client = httpClientFactory.CreateClient();
             var response = await client.PostAsJsonAsync("https://fakestoreapi.com/products", fakeProduct);
 
             if (response.IsSuccessStatusCode)
             {
-
-                // Lê como string primeiro
                 var respostaFake = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("✅ Produto replicado com sucesso na Fake Store:");
-                Console.WriteLine(respostaFake);
-
-                // Desserializa manualmente o ID a partir da string (sem perder o conteúdo)
                 var fakeResponse = JsonSerializer.Deserialize<FakeStoreProduto>(respostaFake);
-
-                // Salva o ID retornado
                 produto.IdFakeStore = fakeResponse?.id;
                 await _context.SaveChangesAsync();
             }
             else
             {
-                Console.WriteLine("❌ Erro ao replicar na Fake Store:");
-                Console.WriteLine("Status: " + response.StatusCode);
                 var erro = await response.Content.ReadAsStringAsync();
-                Console.WriteLine("Detalhes: " + erro);
+                _logger.LogWarning("[AVISO] Erro ao replicar na Fake Store: {Status} - {Detalhes}", response.StatusCode, erro);
             }
-
 
             return CreatedAtAction(nameof(GetProduto), new { id = produto.Id }, produto);
         }
 
-
-        // PUT: api/produtos/5
+        // PUT: Atualiza os dados de um produto existente e reflete a alteração também na Fake Store
         [HttpPut("{id}")]
         public async Task<IActionResult> PutProduto(
-        int id,
-        Produto produtoAtualizado,
-        [FromServices] IHttpClientFactory httpClientFactory,
-        [FromServices] IWebHostEnvironment env)
+            int id,
+            Produto produtoAtualizado,
+            [FromServices] IHttpClientFactory httpClientFactory,
+            [FromServices] IWebHostEnvironment env)
         {
+            _logger.LogInformation("[AVISO] Iniciando atualização de produto ID: {Id}", id);
+
             var produto = await _context.Produtos.FindAsync(id);
             if (produto == null)
+            {
+                _logger.LogWarning("[AVISO] Produto ID {Id} não encontrado para atualização", id);
                 return NotFound();
+            }
 
-            // Atualiza os dados locais
             produto.Nome = produtoAtualizado.Nome;
             produto.Preco = produtoAtualizado.Preco;
             produto.CodigoBarras = produtoAtualizado.CodigoBarras;
             produto.ImagemBase64 = produtoAtualizado.ImagemBase64;
 
-            // Atualiza imagem (opcional)
             if (!string.IsNullOrWhiteSpace(produto.ImagemBase64))
             {
                 var pastaImagem = Path.Combine(env.WebRootPath, "imagens");
@@ -201,12 +185,10 @@ namespace ProdutoApi.Controllers
                 var imagemBytes = Convert.FromBase64String(base64Limpo);
                 await System.IO.File.WriteAllBytesAsync(caminhoImagem, imagemBytes);
 
-                // Gera nova URL da imagem
                 var scheme = Request?.Scheme ?? "http";
                 var host = Request?.Host.ToString() ?? "localhost:5091";
                 var urlImagem = $"{scheme}://{host}/imagens/{nomeArquivo}";
 
-                // Atualiza na Fake Store
                 if (produto.IdFakeStore.HasValue)
                 {
                     var client = httpClientFactory.CreateClient();
@@ -219,52 +201,44 @@ namespace ProdutoApi.Controllers
                     };
 
                     var url = $"https://fakestoreapi.com/products/{produto.IdFakeStore}";
-
-                    // 🧾 Loga o que será enviado
-                    Console.WriteLine("🔄 Atualizando produto na Fake Store:");
-                    Console.WriteLine("URL: " + url);
-                    Console.WriteLine("Payload:");
-                    Console.WriteLine(JsonSerializer.Serialize(fakeProduct));
-
                     var resposta = await client.PutAsJsonAsync(url, fakeProduct);
-
-                    // 📥 Loga a resposta da Fake Store
-                    Console.WriteLine("Resposta Fake Store → " + resposta.StatusCode);
                     var respostaBody = await resposta.Content.ReadAsStringAsync();
-                    Console.WriteLine(respostaBody);
+                    _logger.LogInformation("[AVISO] Resposta Fake Store (PUT): {Status} - {Body}", resposta.StatusCode, respostaBody);
                 }
-
             }
 
             await _context.SaveChangesAsync();
             return Ok(produto);
         }
 
-
-        // DELETE: api/produtos/5
+        // DELETE: Remove um produto do banco e da Fake Store
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteProduto(
-        int id,
-        [FromServices] IHttpClientFactory httpClientFactory)
+            int id,
+            [FromServices] IHttpClientFactory httpClientFactory)
+        {
+            _logger.LogInformation("[AVISO] Iniciando exclusão de produto ID: {Id}", id);
+
+            var produto = await _context.Produtos.FindAsync(id);
+            if (produto == null)
             {
-                var produto = await _context.Produtos.FindAsync(id);
-                if (produto == null)
-                    return NotFound();
-
-                _context.Produtos.Remove(produto);
-                await _context.SaveChangesAsync();
-
-                // Apaga também na Fake Store
-                if (produto.IdFakeStore.HasValue)
-                {
-                    var client = httpClientFactory.CreateClient();
-                    var url = $"https://fakestoreapi.com/products/{produto.IdFakeStore}";
-                    var resposta = await client.DeleteAsync(url);
-                    Console.WriteLine("DELETE Fake Store → " + resposta.StatusCode);
-                }
-
-                return NoContent();
+                _logger.LogWarning("[AVISO] Produto ID {Id} não encontrado para exclusão", id);
+                return NotFound();
             }
 
+            _context.Produtos.Remove(produto);
+            await _context.SaveChangesAsync();
+
+            if (produto.IdFakeStore.HasValue)
+            {
+                var client = httpClientFactory.CreateClient();
+                var url = $"https://fakestoreapi.com/products/{produto.IdFakeStore}";
+                var resposta = await client.DeleteAsync(url);
+                _logger.LogInformation("[AVISO] Produto deletado da Fake Store - Status: {Status}", resposta.StatusCode);
+            }
+
+            _logger.LogInformation("[AVISO] Produto ID {Id} excluído com sucesso", id);
+            return NoContent();
+        }
     }
 }

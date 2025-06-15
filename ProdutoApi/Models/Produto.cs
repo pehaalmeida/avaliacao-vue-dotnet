@@ -3,10 +3,10 @@ namespace ProdutoApi.Models
     // Classe que representa a tabela Produto no banco de dados
     public class Produto
     {
-        public int Id { get; set; } // Chave primária
-        public string? Nome { get; set; } // Nome do produto
-        public decimal Preco { get; set; } // Preço do produto
-        public string? CodigoBarras { get; set; } // Código de barras
+        public int Id { get; set; }
+        public string? Nome { get; set; }
+        public decimal Preco { get; set; }
+        public string? CodigoBarras { get; set; }
         public string? ImagemBase64 { get; set; }
         public int? IdFakeStore { get; set; }
     }

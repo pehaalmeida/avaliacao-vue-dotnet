@@ -3,13 +3,12 @@ using ProdutoApi.Models;
 
 namespace ProdutoApi.Data
 {
-    // Classe que representa a conexão com o banco e o mapeamento das tabelas
+    // AppDbContext representa o contexto do banco de dados
     public class AppDbContext : DbContext
     {
-        // Construtor que recebe as configurações via injeção de dependência
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // DbSet representa uma tabela chamada Produtos no banco de dados
-        public DbSet<Produto> Produtos { get; set; }
+        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { } // Construtor que recebe as opÃ§Ãµes de configuraÃ§Ã£o do DbContext
+        public DbSet<Produto> Produtos { get; set; } // DbSet representa uma tabela chamada Produtos no banco de dados
+    
     }
 }
