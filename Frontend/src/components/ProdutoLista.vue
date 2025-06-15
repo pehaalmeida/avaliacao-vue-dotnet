@@ -18,7 +18,7 @@
         :key="produto.id"
         class="bg-white rounded-lg shadow hover:shadow-md transition-all border border-gray-200 p-4 flex flex-col"
       >
-        <!-- Exibição da imagem do produto (caso disponível) -->
+        <!-- Exibição da imagem do produto -->
         <div class="w-full flex justify-center mb-4">
           <img
             v-if="produto.imagemBase64"
